@@ -4,4 +4,21 @@
 # If you change this key, all old signed cookies will become invalid!
 # Make sure the secret is at least 30 characters and all random,
 # no regular words or you'll be exposed to dictionary attacks.
-CNN::Application.config.secret_token = 'd9d3779ff2a67c078309c0451060be8a1104c28576cb6d7250a55fd0a8927b8bba9b3ce6f07c0cd1768ec9ae121fc86dd0e988c9e20d2f7f81d888bdcd2d2969'
+
+if ENV["SECRET_TOKEN"].blank?
+  if Rails.env.production?
+    raise "You must set ENV[\"SECRET_TOKEN\"] in your app's config vars"
+  elsif Rails.env.test?
+    # Generate the key and test away
+    ENV["SECRET_TOKEN"] = CNN::Application.config.secret_token = SecureRandom.hex(30)
+  else
+    config_file = File.expand_path(File.join(Rails.root, '/config/config.yml'))
+    config = YAML.load_file(config_file)
+    # Generate the key, set it for the current environment, update the yaml file and move on
+    ENV["SECRET_TOKEN"] = config[Rails.env]['SECRET_TOKEN'] = SecureRandom.hex(30)
+    File.open(config_file, 'w') { |file| file.write(config.to_yaml) }
+  end
+end
+
+CNN::Application.config.secret_token = ENV["SECRET_TOKEN"]
+
